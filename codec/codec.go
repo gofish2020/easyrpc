@@ -9,3 +9,8 @@ type Codec interface {
 	Encode(i interface{}) ([]byte, error)
 	Decode(data []byte, i interface{}) error
 }
+
+
+
+
+

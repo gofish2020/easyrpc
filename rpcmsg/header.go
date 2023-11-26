@@ -5,7 +5,7 @@ package rpcmsg
 
 const (
 	magicNumber byte = 0xFF // 魔法数
-	version     byte = 0x01 //协议版本
+	Version     byte = 0x01 //协议版本
 	HEADER_LEN  int  = 5    // 固定5字节
 )
 
@@ -22,8 +22,9 @@ type CompressType byte
 
 const (
 	None CompressType = iota
-	Gzip
+	Zlib
 	Snappy
+	Lz4
 )
 
 // 序列化类型
