@@ -34,9 +34,9 @@ type RPCClient struct {
 	option Option
 	addr   string
 
-	mutex sync.Mutex
+	mutex sync.Mutex // 发送的并发控制
 
-	mu      sync.RWMutex
+	mu      sync.RWMutex // map的并发控制
 	waiting map[int64]*waitMsg
 
 	serverShutdown int32

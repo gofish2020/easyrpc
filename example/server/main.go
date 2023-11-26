@@ -24,8 +24,7 @@ func main() {
 
 	server := rpcserver.NewRPCServer(option)
 	server.RegisterByName("User", &user.UserService{})
-
-	go server.Run()
+	server.Run()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)

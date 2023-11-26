@@ -90,7 +90,7 @@ func (listen *RPCListener) handleConn(conn net.Conn) {
 	}
 
 	log.Printf("new client connection come in %s\n", conn.RemoteAddr().String())
-
+	// 避免 panic
 	defer func() {
 		if err := recover(); err != nil {
 			log.Printf("addr %s panic err :%+v\n", conn.RemoteAddr().String(), err)
@@ -98,7 +98,7 @@ func (listen *RPCListener) handleConn(conn net.Conn) {
 		conn.Close()
 
 	}()
-
+	// 记录处理中的连接个数
 	atomic.AddInt32(&listen.running, 1)
 	defer func() {
 		atomic.AddInt32(&listen.running, -1)
@@ -111,6 +111,7 @@ func (listen *RPCListener) handleConn(conn net.Conn) {
 		// 	conn.SetReadDeadline(time.Now().Add(listen.option.ReadTimeout))
 		// }
 
+		// 从连接冲接收一个完整的数据包
 		msg, err := rpcmsg.RecvFrom(conn)
 		if err != nil {
 			log.Printf("receive msg error:%+v\n", err)
@@ -128,7 +129,7 @@ func (listen *RPCListener) handleConn(conn net.Conn) {
 		// 序列化器
 		codeTool := rpcmsg.Codecs[msg.Header.SerializeType()]
 
-		// 入参
+		// 入参解码
 		argsIn := make([]interface{}, 0)
 		err = codeTool.Decode(payload, &argsIn)
 		if err != nil {
@@ -173,6 +174,7 @@ func (listen *RPCListener) handleConn(conn net.Conn) {
 			ObjectName:        "",
 			MethodName:        "",
 		}
+		// 将结果返回给客户端
 		err = rpcmsg.SendTo(conn, compressRes, config)
 		if err != nil {
 			log.Printf("send msg error:%+v\n", err)
@@ -183,13 +185,14 @@ func (listen *RPCListener) handleConn(conn net.Conn) {
 	}
 }
 func (listen *RPCListener) Shutdown() {
+	// 设置关闭标识
 	atomic.CompareAndSwapInt32(&listen.shutdown, 0, 1)
 	// 关闭监听
 	listen.closeChan()
 	if listen.l != nil {
 		listen.l.Close()
 	}
-	// 说明还有连接在处理
+	// 说明还有连接在处理（自旋锁）
 	for atomic.LoadInt32(&listen.running) != 0 {
 		//log.Printf("还有 %d task running\n", listen.running)
 	}
