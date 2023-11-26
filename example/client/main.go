@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gofish2020/easyrpc/example/client/user"
 	"github.com/gofish2020/easyrpc/rpcclient"
@@ -49,5 +50,7 @@ func main() {
 	fmt.Println(result)
 	info, err := GetUserInfoById(1)
 	fmt.Println(info, err)
+
+	<-time.After(8 * time.Second)
 
 }

@@ -179,7 +179,7 @@ func (listen *RPCListener) handleConn(conn net.Conn) {
 			return
 		}
 
-		log.Printf("%s.%s total runtime %d\n", msg.ObjectName, msg.MethodName, time.Since(startTime).Milliseconds())
+		log.Printf("%s.%s total runtime %d ms\n", msg.ObjectName, msg.MethodName, time.Since(startTime).Milliseconds())
 	}
 }
 func (listen *RPCListener) Shutdown() {

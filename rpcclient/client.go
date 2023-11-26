@@ -20,30 +20,6 @@ type Client interface {
 	Close()
 }
 
-type Option struct {
-	Network        string
-	Retries        int
-	FailMode       FailMode
-	ConnectTimeout time.Duration
-	ReadTimeout    time.Duration
-	WriteTimeout   time.Duration
-	SerializeType  rpcmsg.SerializeType
-	CompressType   rpcmsg.CompressType
-	Version        byte
-}
-
-var DefaultOption = Option{
-	Network:        "tcp",
-	Retries:        3,
-	FailMode:       Failover,
-	ConnectTimeout: 5 * time.Second,
-	ReadTimeout:    1 * time.Second,
-	WriteTimeout:   1 * time.Second,
-	SerializeType:  rpcmsg.Gob,
-	CompressType:   rpcmsg.None,
-	Version:        rpcmsg.Version,
-}
-
 func NewRPCClient(option Option) *RPCClient {
 	return &RPCClient{
 		option:         option,
@@ -130,7 +106,7 @@ func (client *RPCClient) Close() {
 func (client *RPCClient) Call(ctx context.Context, servicePath string, stub interface{}, params ...interface{}) (interface{}, error) {
 	serviceInfo := strings.Split(servicePath, ".")
 	if len(serviceInfo) != 2 {
-		return nil, fmt.Errorf("servicePath format is wrong ObjectXXX.MethodXXX")
+		return nil, fmt.Errorf("servicePath format is splitted by point ObjectXXX.MethodXXX")
 	}
 
 	// stub 函数指针
@@ -162,11 +138,18 @@ func (client *RPCClient) Call(ctx context.Context, servicePath string, stub inte
 		for _, arg := range args {
 			argsIn = append(argsIn, arg.Interface())
 		}
-		// 序列化入参
+		// 序列化器
 		codeTool := rpcmsg.Codecs[client.option.SerializeType]
-		payload, err := codeTool.Encode(argsIn)
+		encodeRes, err := codeTool.Encode(argsIn)
 		if err != nil {
 			log.Printf("encode err:%+v\n", err)
+			return errorHandler(err)
+		}
+		// 压缩器
+		compressor := rpcmsg.Compressor[client.option.CompressType]
+		payload, err := compressor.Compress(encodeRes)
+		if err != nil {
+			log.Printf("compress err:%+v\n", err)
 			return errorHandler(err)
 		}
 
@@ -202,9 +185,15 @@ func (client *RPCClient) Call(ctx context.Context, servicePath string, stub inte
 		if resMsg == nil {
 			return errorHandler(ErrServer)
 		}
+		// 解压缩
+		compressRes, err := compressor.UnCompress(resMsg.Payload)
+		if err != nil {
+			return errorHandler(err)
+		}
 
 		argsOut := make([]interface{}, 0)
-		err = codeTool.Decode(resMsg.Payload, &argsOut)
+		// 反序列化
+		err = codeTool.Decode(compressRes, &argsOut)
 		if err != nil {
 			return errorHandler(err)
 		}
