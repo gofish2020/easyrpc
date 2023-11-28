@@ -1,7 +1,4 @@
----
-typora-copy-images-to: ../rpc实现
 
----
 
 # 适合新手的简单Golang项目：实现自己的RPC框架
 
@@ -22,7 +19,7 @@ typora-copy-images-to: ../rpc实现
 
 `RPC ( Remote Procedure Call )` 远程过程调用，用于不在同一个机器上的两个应用程序，互相调用对方的方法，就像调用本地一样简单。
 
-![](./rpc.png)
+![](./img/rpc.png)
 
 1. 在机器`B`启动服务端`server`程序，并注册本地方法
 2. 在机器`A`启动客户端`client`程序，调用客户端本地方法
@@ -35,7 +32,7 @@ typora-copy-images-to: ../rpc实现
 
 `Go`总代码量 1127 行，核心代码也就是700多行，包括`rpcclient rpcmsg rpcserver` 3 个文件夹
 
-![](./image-20231126190004549.png)
+![](./img/image-20231126190004549.png)
 
 - `codec` 序列化和反序列化
 - `compress` 对数据进行压缩和解压缩
@@ -50,7 +47,7 @@ typora-copy-images-to: ../rpc实现
 
 一个函数由三个部分组成**函数名**、**函数入参**、**函数出参**。
 
-![](./image-20231126205653287.png)
+![](./img/image-20231126205653287.png)
 
 要想通过`RPC`调用其他服务的方法，肯定需要将 **函数名**（我要调哪个函数）以及**入参**（函数的参数是什么），通过网络传递给被调用方，调用方执行完对应的函数以后，将结果即**出参**再通过网络传递回来，完成一次完整的`RPC`过程。
 
@@ -60,7 +57,7 @@ typora-copy-images-to: ../rpc实现
 
 > 消息头 5 字节
 
-![](./image-20231126211005495.png)
+![](./img/image-20231126211005495.png)
 
 - magicNumber ：用于内部校验使用
 
@@ -86,7 +83,7 @@ typora-copy-images-to: ../rpc实现
 
 > 消息体 不定长
 
-![](./image-20231126212613339.png)
+![](./img/image-20231126212613339.png)
 
 -  消息编号：为了客户端复用一个连接发送多个请求数据包，当返回响应数包的时候，知道该响应数据包归属于哪个请求。
 - 请求体总长度：为了解决沾包问题，增加的字段，可以知道后序待读取数据长度
@@ -268,7 +265,7 @@ func (t *RPCMsg) RecvMsg(r io.Reader) error {
 
 > 服务启动 -> 注册本地方法 -> 监听新连接 -> 一个连接`conn`启动`goroutine`处理 ->  调用`rpcmsg package` 从 `conn`读取一个 `RPCMsg` -> 根据 `objectName` 和 `methodName` 查找本地方法并调用 -> 再通过 `conn`将处理结果返回给客户端
 
-![](./rpcserver.png)
+![](./img/rpcserver.png)
 
 > 服务调用 example/server/main.go
 
@@ -590,7 +587,7 @@ funcValue.Set(reflect.MakeFunc(funcValue.Type(), fn))
 
 通过 ` reflect.MakeFunc`定义好函数如何和服务端进行数据发送以后，我们知道函数的调用会存在多个协程一起调用同一个函数的情况，而且函数内部复用的一个 `conn`连接
 
-![](./image-20231126223640941.png)
+![](./img/image-20231126223640941.png)
 
 解决方法
 
@@ -599,11 +596,11 @@ funcValue.Set(reflect.MakeFunc(funcValue.Type(), fn))
 
 这里采用第二种方式，加锁发送，代码位于【rpcclient/client.go】
 
-![](./image-20231126224117718.png)
+![](./img/image-20231126224117718.png)
 
 > 数据包响应无序性
 
-![](./image-20231126225016006.png)
+![](./img/image-20231126225016006.png)
 
 按照 1 2 3的方式发送数据包，按理应该也按照 1 2 3的顺序返回响应。因为网络延迟等各种因素，实际可能会按照 3 1 2的方式响应。所以不能发送完，立刻读取响应，因为可能读取到的是其他的响应。那只能发送完数据包以后，在本地缓存先记录下发送了那些数据包的编号，得到该编号的数据包真返回，才通知用户响应到了。
 
